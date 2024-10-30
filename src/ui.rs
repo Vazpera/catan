@@ -32,5 +32,6 @@ pub fn render(app: Arc<Mutex<App>>, frame: &mut Frame) {
         .style(Style::default().fg(Color::Cyan).bg(Color::Black))
         .centered(),
         frame.area(),
-    )
+    );
+    drop(held);
 }

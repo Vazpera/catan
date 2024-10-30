@@ -27,5 +27,6 @@ pub async fn handle_key_events(key_event: KeyEvent, app: Arc<Mutex<App>>) -> App
         // Other handlers you could add here.
         _ => {}
     }
+    drop(held);
     Ok(())
 }

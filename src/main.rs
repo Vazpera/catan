@@ -1,5 +1,8 @@
 use std::io;
+use std::task::Context;
 
+use backend::peer;
+use futures::FutureExt;
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -19,13 +22,8 @@ pub mod handler;
 pub mod tui;
 pub mod ui;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create an application.
-    let app = Arc::new(Mutex::new(App::new()));
-
-    // Initialize the terminal user interface.
-    let backend = CrosstermBackend::new(io::stdout());
+async fn runtime(app: Arc<Mutex<App>>) -> Result<(), Box<dyn std::error::Error>> {
+    let backend: CrosstermBackend<io::Stdout> = CrosstermBackend::new(io::stdout());
     let terminal = Terminal::new(backend)?;
     let events = EventHandler::new(250);
     let mut tui: Tui<CrosstermBackend<io::Stdout>> = Tui::new(terminal, events);
@@ -35,6 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Start the main loop.
     loop {
         let x = held.lock().unwrap();
+
         if x.running {
             match tui.events.next().await.unwrap() {
                 Event::Tick => {
@@ -55,5 +54,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     // Exit the user interface.
     tui.exit()?;
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create an application.
+    let app = Arc::new(Mutex::new(App::new()));
+    let server = peer::peer(std::env::args().collect(), app.clone());
+    let runtime = runtime(app.clone());
+    tokio::join!(server, runtime);
+    // Initialize the terminal user interface.
+
     Ok(())
 }
