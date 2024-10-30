@@ -21,10 +21,7 @@ impl Message {
     }
 }
 
-async fn send_message(
-    address: SocketAddr,
-    message: &Message,
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn join(address: SocketAddr, message: &Message) -> Result<(), Box<dyn std::error::Error>> {
     let mut stream = TcpStream::connect(address).await?;
 
     // Serialize the message
@@ -35,7 +32,7 @@ async fn send_message(
     stream.write_all(&serialized_message).await?;
 
     println!("Sent message: {:?}", message);
-    let mut buf = [0;1024];
+    let mut buf = [0; 1024];
     let _ = stream.read(&mut buf).await;
     let res = Message::parse(&buf);
     println!("Recieved: {:?}", res);
@@ -49,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let message = Message::JoinNetwork("Hello, Server!".to_string());
 
-    send_message(address, &message).await?;
-    
+    join(address, &message).await?;
+
     Ok(())
 }
