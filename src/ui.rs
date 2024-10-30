@@ -4,7 +4,6 @@ use ratatui::{
     widgets::{Block, BorderType, Paragraph},
     Frame,
 };
-use std::sync::MutexGuard;
 use std::sync::{Arc, Mutex};
 
 use crate::app::App;

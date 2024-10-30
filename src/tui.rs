@@ -3,7 +3,6 @@ use crate::event::EventHandler;
 use crate::ui;
 use crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
-use std::sync::MutexGuard;
 use ratatui::backend::Backend;
 use ratatui::Terminal;
 use std::io;

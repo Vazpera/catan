@@ -1,15 +1,11 @@
-use std::borrow::Borrow;
-use std::borrow::BorrowMut;
 use std::io;
-use std::ops::Deref;
 
-use futures::lock::MutexGuard;
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use crate::{
-    app::{App, AppResult},
+    app::App,
     event::{Event, EventHandler},
     handler::handle_key_events,
     tui::Tui,
@@ -23,28 +19,6 @@ pub mod handler;
 pub mod tui;
 pub mod ui;
 
-async fn loop_section(
-    app: Arc<Mutex<App>>,
-    tui: &mut Tui<CrosstermBackend<io::Stdout>>,
-) {
-    let held = app.lock().unwrap();
-    // Render the user interface.
-    // Handle events.
-    match tui.events.next().await.unwrap() {
-        Event::Tick => held.tick(),
-        Event::Key(key_event) => handle_key_events(key_event, app.clone()).await.unwrap(),
-        Event::Mouse(_) => {}
-        Event::Resize(_, _) => {}
-    }
-}
-
-async fn main_loop(app: Arc<Mutex<App>>, mut tui: Tui<CrosstermBackend<io::Stdout>>) {
-    loop {
-        loop_section(app.clone(), tui.borrow_mut()).await;
-    }
-    // tui.exit().unwrap();
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create an application.
@@ -54,16 +28,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(io::stdout());
     let terminal = Terminal::new(backend)?;
     let events = EventHandler::new(250);
-    let mut tui: Tui<CrosstermBackend<io::Stdout>> =
-        Tui::new(terminal, events);
+    let mut tui: Tui<CrosstermBackend<io::Stdout>> = Tui::new(terminal, events);
     tui.init()?;
 
-    tui.draw(app.clone()).unwrap();
-
+    let held = app.clone();
     // Start the main loop.
-
-    main_loop(app.clone(), tui).await;
-
+    loop {
+        let x = held.lock().unwrap();
+        if x.running {
+            match tui.events.next().await.unwrap() {
+                Event::Tick => {
+                    x.tick();
+                    drop(x);
+                }
+                Event::Key(key_event) => {
+                    drop(x);
+                    handle_key_events(key_event, app.clone()).await.unwrap();
+                }
+                Event::Mouse(_) => drop(x),
+                Event::Resize(_, _) => drop(x),
+            }
+            tui.draw(app.clone())?;
+        } else {
+            break;
+        }
+    }
     // Exit the user interface.
+    tui.exit()?;
     Ok(())
 }
