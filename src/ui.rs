@@ -9,8 +9,7 @@ use std::sync::{Arc, Mutex};
 use crate::app::App;
 
 /// Renders the user interface widgets.
-pub fn render(app: Arc<Mutex<App>>, frame: &mut Frame) {
-    let held = app.lock().unwrap();
+pub fn render(app: Arc<App>, frame: &mut Frame) {
     // This is where you add new widgets.
     // See the following resources:
     // - https://docs.rs/ratatui/latest/ratatui/widgets/index.html
@@ -18,10 +17,13 @@ pub fn render(app: Arc<Mutex<App>>, frame: &mut Frame) {
     frame.render_widget(
         Paragraph::new(format!(
             "This is a tui template.\n\
-                Press `Esc`, `Ctrl-C` or `q` to stop running.\n\
-                Press left and right to increment and decrement the counter respectively.\n\
+                {},\
                 Counter: {}",
-            held.counter
+            match *app.is_host.lock().unwrap() {
+                true => "SERVER".to_owned(),
+                false => "CLIENT".to_owned(),
+            },
+            *app.counter.lock().unwrap(),
         ))
         .block(
             Block::bordered()
@@ -33,5 +35,4 @@ pub fn render(app: Arc<Mutex<App>>, frame: &mut Frame) {
         .centered(),
         frame.area(),
     );
-    drop(held);
 }

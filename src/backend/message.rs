@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -10,6 +12,7 @@ pub enum Message {
     Kick(String),
     // Bi-directional
     SendMessage(String),
+    Ping,
 }
 
 impl Message {
@@ -19,5 +22,11 @@ impl Message {
 
     pub fn serialize(&self) -> Result<Vec<u8>, bincode::Error> {
         bincode::serialize(self).map_err(|e| e.into())
+    }
+    pub fn eval(&self, app: Arc<crate::App>) {
+        match self {
+            Self::Incriment => app.increment_counter(),
+            _ => {},
+        }
     }
 }

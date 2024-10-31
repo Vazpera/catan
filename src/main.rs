@@ -22,7 +22,7 @@ pub mod handler;
 pub mod tui;
 pub mod ui;
 
-async fn runtime(app: Arc<Mutex<App>>) -> Result<(), Box<dyn std::error::Error>> {
+async fn runtime(app: Arc<App>) -> Result<(), Box<dyn std::error::Error>> {
     let backend: CrosstermBackend<io::Stdout> = CrosstermBackend::new(io::stdout());
     let terminal = Terminal::new(backend)?;
     let events = EventHandler::new(250);
@@ -32,20 +32,17 @@ async fn runtime(app: Arc<Mutex<App>>) -> Result<(), Box<dyn std::error::Error>>
     let held = app.clone();
     // Start the main loop.
     loop {
-        let x = held.lock().unwrap();
 
-        if x.running {
+        if *app.running.lock().unwrap() {
             match tui.events.next().await.unwrap() {
                 Event::Tick => {
-                    x.tick();
-                    drop(x);
+                    app.tick();
                 }
                 Event::Key(key_event) => {
-                    drop(x);
                     handle_key_events(key_event, app.clone()).await.unwrap();
                 }
-                Event::Mouse(_) => drop(x),
-                Event::Resize(_, _) => drop(x),
+                Event::Mouse(_) => {}
+                Event::Resize(_, _) => {}
             }
             tui.draw(app.clone())?;
         } else {
@@ -60,7 +57,7 @@ async fn runtime(app: Arc<Mutex<App>>) -> Result<(), Box<dyn std::error::Error>>
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create an application.
-    let app = Arc::new(Mutex::new(App::new()));
+    let app = Arc::new(App::new());
     let server = peer::peer(std::env::args().collect(), app.clone());
     let runtime = runtime(app.clone());
     tokio::join!(server, runtime);

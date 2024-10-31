@@ -4,29 +4,31 @@ use crate::app::{App, AppResult};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 /// Handles the key events and updates the state of [`App`].
-pub async fn handle_key_events(key_event: KeyEvent, app: Arc<Mutex<App>>) -> AppResult<()> {
-    let mut held = app.lock().unwrap();
-    match key_event.code {
+pub async fn handle_key_events(key_event: KeyEvent, app: Arc<App>) -> AppResult<()> {
+    match (key_event.code, *app.is_host.lock().unwrap()) {
         // Exit application on `ESC` or `q`
-        KeyCode::Esc | KeyCode::Char('q') => {
-            held.quit();
+        (KeyCode::Esc | KeyCode::Char('q'), _) => {
+            app.quit();
         }
-        // Exit heldlication on `Ctrl-C`
-        KeyCode::Char('c') | KeyCode::Char('C') => {
+        // Exit application on `Ctrl-C`
+        (KeyCode::Char('c') | KeyCode::Char('C'), _) => {
             if key_event.modifiers == KeyModifiers::CONTROL {
-                held.quit();
+                app.quit();
             }
         }
         // Counter handlers
-        KeyCode::Right => {
-            held.increment_counter();
+        (KeyCode::Right, _) => {
+            app.increment_counter();
         }
-        KeyCode::Left => {
-            held.decrement_counter();
+        (KeyCode::Left, _) => {
+            app.decrement_counter();
+        }
+        (KeyCode::Up, false) => {
+            app.publish_incriment().await;
         }
         // Other handlers you could add here.
         _ => {}
     }
-    drop(held);
+    drop(app);
     Ok(())
 }
