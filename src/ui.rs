@@ -1,7 +1,8 @@
 use ratatui::{
     layout::Alignment,
-    style::{Color, Style},
-    widgets::{Block, BorderType, Paragraph},
+    style::{Color, Style, Stylize},
+    text::{Line, Span},
+    widgets::{block::Title, Block, BorderType, Paragraph},
     Frame,
 };
 use std::sync::{Arc, Mutex};
@@ -10,29 +11,47 @@ use crate::app::App;
 
 /// Renders the user interface widgets.
 pub fn render(app: Arc<App>, frame: &mut Frame) {
-    // This is where you add new widgets.
-    // See the following resources:
-    // - https://docs.rs/ratatui/latest/ratatui/widgets/index.html
-    // - https://github.com/ratatui/ratatui/tree/master/examples
-    frame.render_widget(
-        Paragraph::new(format!(
-            "This is a tui template.\n\
-                {},\
-                Counter: {}",
-            match *app.is_host.lock().unwrap() {
-                true => "SERVER".to_owned(),
-                false => "CLIENT".to_owned(),
-            },
-            *app.counter.lock().unwrap(),
-        ))
-        .block(
+    let title = Title::default().content(if *app.is_host.lock().unwrap() {
+        "HOST"
+    } else {
+        "CLIENT"
+    });
+    if *app.is_host.lock().unwrap() {
+        let counter_span = Line::default().spans(vec![format!(
+            "Value to be guessed: {}",
+            *app.counter.lock().unwrap()
+        )]);
+        let guess_span = Line::default().spans(vec![format!(
+            "Nuumber of connections = {}",
+            app.connections.lock().unwrap()
+        )]);
+
+        let paragraph = Paragraph::new(vec![counter_span, guess_span]).block(
             Block::bordered()
-                .title("Template")
-                .title_alignment(Alignment::Center)
-                .border_type(BorderType::Rounded),
-        )
-        .style(Style::default().fg(Color::Cyan).bg(Color::Black))
-        .centered(),
-        frame.area(),
-    );
+                .title(title)
+                .border_style(Style::new().blue()),
+        );
+
+        frame.render_widget(paragraph, frame.area());
+    } else {
+        let counter_span =
+            Line::default().spans(vec![format!("Guess: {}", *app.counter.lock().unwrap())]);
+        let guess_span = Line::default().spans(vec![format!(
+            "{}",
+            match *app.guessed_correct.lock().unwrap() {
+                Some(j) => format!(
+                    "Your guess was {}!",
+                    if j { "right" } else { "wrong" }
+                ),
+                None => "Haven't guessed yet!".to_owned(),
+            }
+        )]);
+        let paragraph = Paragraph::new(vec![counter_span, guess_span]).block(
+            Block::bordered()
+                .title(title)
+                .border_style(Style::new().red()),
+        );
+
+        frame.render_widget(paragraph, frame.area());
+    }
 }

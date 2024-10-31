@@ -1,18 +1,11 @@
-use std::sync::Arc;
+use std::{cmp::Ordering, sync::Arc};
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Message {
-    // Client Messages
-    JoinNetwork(String),
-    LeaveNetwork(String),
-    Incriment,
-    // Server Messages
-    Kick(String),
-    // Bi-directional
-    SendMessage(String),
-    Ping,
+    GuessNumber(u8),
+    Result(bool),
 }
 
 impl Message {
@@ -23,10 +16,11 @@ impl Message {
     pub fn serialize(&self) -> Result<Vec<u8>, bincode::Error> {
         bincode::serialize(self).map_err(|e| e.into())
     }
-    pub fn eval(&self, app: Arc<crate::App>) {
-        match self {
-            Self::Incriment => app.increment_counter(),
-            _ => {},
+    pub async fn eval(&self, app: Arc<crate::App>) {
+        match (self, *app.is_host.lock().unwrap()) {
+            (Self::GuessNumber(j), true) => app.test_guess(j.to_owned()).await,
+            (Self::Result(j), false) => app.process_result(j.to_owned()).await,
+            _ => {}
         }
     }
 }

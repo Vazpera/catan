@@ -24,7 +24,7 @@ pub async fn handle_key_events(key_event: KeyEvent, app: Arc<App>) -> AppResult<
             app.decrement_counter();
         }
         (KeyCode::Up, false) => {
-            app.publish_incriment().await;
+            app.publish_guess().await;
         }
         // Other handlers you could add here.
         _ => {}

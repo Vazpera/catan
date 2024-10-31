@@ -13,33 +13,29 @@ pub async fn handle_stream(
     app: Arc<crate::App>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut buf: [u8; 1024] = [0; 1024];
-    let mut tick = 0;
     loop {
-        let mut recv = app.queued_instructions.1.lock().unwrap();
+        let mut recv = app.message_stream.1.lock().unwrap();
         let out_stream = recv.next().boxed();
         let in_stream = stream.read(&mut buf);
+        if *app.running.lock().unwrap() == false {
+            break;
+        }
         let _ = tokio::select! {
             res = in_stream => {
                 match res {
                     Ok(n) => {
                         if n == 0 || !*app.running.lock().unwrap() {
-                            *app.running.lock().unwrap() = false;
+                            if *app.is_host.lock().unwrap() {
+                                *app.connections.lock().unwrap() -= 1;
+                            }
                             break;
                         } else {
                             let message: message::Message = bincode::deserialize(&buf)?;
-                            message.eval(app.clone());
+                            message.eval(app.clone()).await;
                         }
                     }
                     Err(err) => {}
                 }
-                stream
-                    .write_all(&bincode::serialize(&message::Message::Incriment)?)
-                    .await?;
-
-                    tick += 1;
-                    if tick % 10 == 0 {
-                        stream.write_all(&bincode::serialize(&message::Message::Ping)?).await?;
-                    }
             }
             value = out_stream => {
                 match value {
@@ -61,6 +57,8 @@ pub async fn peer(args: Vec<String>, app: Arc<App>) -> Result<(), Box<dyn std::e
         *app.is_host.lock().unwrap() = true;
         let listener = TcpListener::bind("127.0.0.1:8080").await?;
         while let Ok((stream, _)) = listener.accept().await {
+            *app.connections.lock().unwrap() += 1;
+
             handle_stream(stream, distributed_app.clone()).await?;
         }
     } else {
@@ -70,11 +68,11 @@ pub async fn peer(args: Vec<String>, app: Arc<App>) -> Result<(), Box<dyn std::e
             let host: url::Url = addr.parse().unwrap();
             let socket = host.socket_addrs(|| Some(80))?;
             let stream = TcpStream::connect(socket[0]).await?;
-           handle_stream(stream, app.clone()).await?;
+            handle_stream(stream, app.clone()).await?;
         } else {
             let socket: SocketAddr = args[1].clone().parse()?;
             let stream = TcpStream::connect(socket).await?;
-           handle_stream(stream, app.clone()).await?;
+            handle_stream(stream, app.clone()).await?;
         }
     }
 

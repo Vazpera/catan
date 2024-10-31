@@ -14,7 +14,9 @@ pub struct App {
     pub running: Mutex<bool>,
     pub counter: Mutex<u8>,
     pub is_host: Mutex<bool>,
-    pub queued_instructions: (Sender<Message>, Mutex<Receiver<Message>>),
+    pub guessed_correct: Mutex<Option<bool>>,
+    pub connections: Mutex<u8>,
+    pub message_stream: (Sender<Message>, Mutex<Receiver<Message>>),
 }
 
 impl Default for App {
@@ -24,7 +26,9 @@ impl Default for App {
             running: Mutex::new(true),
             counter: Mutex::new(0),
             is_host: Mutex::new(false),
-            queued_instructions: (tx, Mutex::new(rx)),
+            guessed_correct: Mutex::new(None),
+            connections: Mutex::new(0),
+            message_stream: (tx, Mutex::new(rx)),
         }
     }
 }
@@ -56,7 +60,20 @@ impl App {
             *cnter = res;
         }
     }
-    pub async fn publish_incriment(&self) {
-        self.queued_instructions.0.clone().send(Message::Incriment).await;
+
+    pub async fn test_guess(&self, guess: u8) {
+        let correct = *self.counter.lock().unwrap() == guess;
+        self.message_stream.0.clone().send(Message::Result(correct)).await.unwrap();
+    }
+
+    pub async fn publish_guess(&self) {
+        self.message_stream
+            .0
+            .clone()
+            .send(Message::GuessNumber(*self.counter.lock().unwrap()))
+            .await.unwrap();
+    }
+    pub async fn process_result(&self, res: bool) {
+        *self.guessed_correct.lock().unwrap() = Some(res);
     }
 }
