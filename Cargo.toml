@@ -11,3 +11,5 @@ url = "2.5.2"
 crossterm = { version = "0.28.1", features = ["event-stream"] }
 futures = "0.3.31"
 ratatui = "0.29.0"
+trust-dns-resolver = "0.23.2"
+reqwest = "0.12.9"

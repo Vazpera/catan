@@ -1,12 +1,13 @@
 use crate::app::App;
 use crate::backend;
-use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
-use tokio::net::{TcpListener, TcpStream};
-
 use crate::backend::*;
 use futures::{FutureExt, StreamExt};
+use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpListener, TcpStream};
+use trust_dns_resolver::config::*;
+use trust_dns_resolver::Resolver;
 
 pub async fn handle_stream(
     mut stream: TcpStream,
@@ -62,18 +63,11 @@ pub async fn peer(args: Vec<String>, app: Arc<App>) -> Result<(), Box<dyn std::e
             handle_stream(stream, distributed_app.clone()).await?;
         }
     } else {
-        let addr = args[1].clone();
-
-        if addr.contains("://") {
-            let host: url::Url = addr.parse().unwrap();
-            let socket = host.socket_addrs(|| Some(80))?;
-            let stream = TcpStream::connect(socket[0]).await?;
-            handle_stream(stream, app.clone()).await?;
-        } else {
-            let socket: SocketAddr = args[1].clone().parse()?;
-            let stream = TcpStream::connect(socket).await?;
-            handle_stream(stream, app.clone()).await?;
-        }
+        let socket: SocketAddr = args[1].clone().parse()?;
+        let stream = TcpStream::connect(socket).await?;
+        handle_stream(stream, app.clone())
+            .await
+            .expect("Couldn't connect!");
     }
 
     Ok(())

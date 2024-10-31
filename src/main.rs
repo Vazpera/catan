@@ -56,6 +56,7 @@ async fn runtime(app: Arc<App>) -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+
     // Create an application.
     let app = Arc::new(App::new());
     let server = peer::peer(std::env::args().collect(), app.clone());
